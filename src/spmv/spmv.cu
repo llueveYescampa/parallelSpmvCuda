@@ -2,9 +2,30 @@
 //#include "dataDef.h"
 #include "real.h"
 
+#ifdef DOUBLE
+    extern texture<int2> xTex;
+#else
+    extern texture<float> xTex;
+#endif
+
+#ifdef DOUBLE
+    static __inline__ __device__ 
+    double fetch_real(texture<int2> t, int i)
+    {
+	    int2 v = tex1Dfetch(t,i);
+	    return __hiloint2double(v.y, v.x);
+    } // end of fetch_real() //
+#else
+    static __inline__ __device__ 
+    float fetch_real(texture<float> t, int i)
+    {
+	    return tex1Dfetch(t,i);
+    } // end of fetch_double() //
+#endif
+
 __global__ 
 void spmv0(real *__restrict__ y, 
-           real *__restrict__ x, 
+           //real *__restrict__ x, 
            real *__restrict__ val, 
            int  *__restrict__ row_ptr, 
            int  *__restrict__ col_idx, 
@@ -16,7 +37,8 @@ void spmv0(real *__restrict__ y,
     if (row < nRows)  {
         real dot = (real) 0;
         for (int col = row_ptr[row]; col < row_ptr[row+1]; ++col ) {
-            dot += (val[col] * x[col_idx[col]]);
+            //dot += (val[col] * x[col_idx[col]]);
+            dot += (val[col] * fetch_real( xTex, col_idx[col])); 
         } // end for //
         y[row] = dot;
     } // end if //
@@ -24,7 +46,7 @@ void spmv0(real *__restrict__ y,
 
 __global__ 
 void spmv1(real *__restrict__ y, 
-           real *__restrict__ x, 
+           //real *__restrict__ x, 
            real *__restrict__ val, 
            int *__restrict__  row_ptr, 
            int *__restrict__  col_idx, 
@@ -36,7 +58,8 @@ void spmv1(real *__restrict__ y,
     const unsigned int row = blockIdx.x;
     
     for (unsigned int col=row_ptr[row]+threadIdx.x; col<row_ptr[row+1]; col+=blockDim.x) {
-        temp[threadIdx.x] += (val[col] * x[col_idx[col]]);
+        //temp[threadIdx.x] += (val[col] * x[col_idx[col]]);
+        temp[threadIdx.x] += (val[col] * fetch_real( xTex, col_idx[col]));
     } // end for //
     __syncthreads();
     

@@ -7,30 +7,36 @@
 
 #include "parallelSpmv.h"
 
-#define REP 1000
-
-
 #define FATAL(msg) \
     do {\
         fprintf(stderr, "[%s:%d] %s\n", __FILE__, __LINE__, msg);\
         exit(-1);\
     } while(0)
 
+#define REP 1000
+
+#ifdef DOUBLE
+    texture<int2>  xTex;
+#else
+    texture<float> xTex;
+#endif
+
 __global__ void spmv0(real *__restrict__ y, 
-                     real *__restrict__ x, 
-                     real *__restrict__ val,  
-                     int  *__restrict__ row_ptr, 
-                     int  *__restrict__ col_idx, 
-                     const int nRows
-                     );
+                      //real *__restrict__ x, 
+                      real *__restrict__ val,  
+                      int  *__restrict__ row_ptr, 
+                      int  *__restrict__ col_idx, 
+                      const int nRows
+                      );
                      
 __global__ void spmv1(real *__restrict__ y, 
-                     real *__restrict__ x, 
-                     real *__restrict__ val,  
-                     int  *__restrict__ row_ptr, 
-                     int  *__restrict__ col_idx, 
-                     const int nRows
+                      //real *__restrict__ x, 
+                      real *__restrict__ val,  
+                      int  *__restrict__ row_ptr, 
+                      int  *__restrict__ col_idx, 
+                      const int nRows
                      );
+
 
 real calculateSD(real *data, int n)
 {
@@ -215,11 +221,14 @@ int main(int argc, char *argv[])
         if(cuda_ret != cudaSuccess) FATAL("Unable to copy set device matrix y_d");
 
         if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
-            spmv0<<<grid, block>>>(w_d, v_d, vals_d, rows_d, cols_d, n_global);
+            cuda_ret = cudaBindTexture(NULL, xTex, v_d, n_global*sizeof(real));
+            spmv0<<<grid, block>>>(w_d, vals_d, rows_d, cols_d, n_global);
+            cuda_ret = cudaUnbindTexture(xTex);
         } else {
-            spmv1<<<grid, block, block.x*sizeof(real)>>>(w_d, v_d, vals_d, rows_d, cols_d, n_global);
+            cuda_ret = cudaBindTexture(NULL, xTex, v_d, n_global*sizeof(real));       
+            spmv1<<<grid, block, block.x*sizeof(real)>>>(w_d, vals_d, rows_d, cols_d, n_global);
+            cuda_ret = cudaUnbindTexture(xTex);
         } // end if // 
-        
 
         cuda_ret = cudaMemcpy(w, w_d, (n_global)*sizeof(real),cudaMemcpyDeviceToHost);
         if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix y_d back to host");
