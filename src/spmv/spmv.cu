@@ -1,11 +1,13 @@
 #include <stdio.h>
-//#include "dataDef.h"
 #include "real.h"
+
 
 #ifdef DOUBLE
     extern texture<int2> xTex;
+    extern texture<int2> valTex;
 #else
     extern texture<float> xTex;
+    extern texture<float> valTex;
 #endif
 
 #ifdef DOUBLE
@@ -26,11 +28,11 @@
 __global__ 
 void spmv0(real *__restrict__ y, 
            //real *__restrict__ x, 
-           real *__restrict__ val, 
+           //real *__restrict__ val, 
            int  *__restrict__ row_ptr, 
            int  *__restrict__ col_idx, 
            const int nRows
-           )
+          )
 {    
     const unsigned int row = blockIdx.x*blockDim.x + threadIdx.x;
     
@@ -38,7 +40,7 @@ void spmv0(real *__restrict__ y,
         real dot = (real) 0;
         for (int col = row_ptr[row]; col < row_ptr[row+1]; ++col ) {
             //dot += (val[col] * x[col_idx[col]]);
-            dot += (val[col] * fetch_real( xTex, col_idx[col])); 
+            dot += (fetch_real(valTex,col) * fetch_real( xTex, col_idx[col])); 
         } // end for //
         y[row] = dot;
     } // end if //
@@ -47,7 +49,7 @@ void spmv0(real *__restrict__ y,
 __global__ 
 void spmv1(real *__restrict__ y, 
            //real *__restrict__ x, 
-           real *__restrict__ val, 
+           //real *__restrict__ val, 
            int *__restrict__  row_ptr, 
            int *__restrict__  col_idx, 
            int nRows)
@@ -55,18 +57,18 @@ void spmv1(real *__restrict__ y,
     extern __shared__ real temp[];
     temp[threadIdx.x] = (real) 0;
 
-    const unsigned int row = blockIdx.x;
+    const int row = blockIdx.x;
     
-    for (unsigned int col=row_ptr[row]+threadIdx.x; col<row_ptr[row+1]; col+=blockDim.x) {
+    for (int col=row_ptr[row]+threadIdx.x; col < row_ptr[row+1]; col+=blockDim.x) {
         //temp[threadIdx.x] += (val[col] * x[col_idx[col]]);
-        temp[threadIdx.x] += (val[col] * fetch_real( xTex, col_idx[col]));
+        temp[threadIdx.x] += (fetch_real(valTex,col) * fetch_real( xTex, col_idx[col]));
     } // end for //
     __syncthreads();
     
     // local reduction per block
-    for (unsigned int next = blockDim.x/2; next > 0; next >>= 1 ) {
+    for (int next = blockDim.x/2; next > 0; next >>= 1 ) {
         if (threadIdx.x < next) {
-            temp[threadIdx.x]+=temp[threadIdx.x+next];
+            temp[threadIdx.x] += temp[threadIdx.x+next];
         } // end if // 
         __syncthreads();
     } // end for //
