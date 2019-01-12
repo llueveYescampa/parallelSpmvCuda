@@ -202,10 +202,12 @@ int main(int argc, char *argv[])
     if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
     	// these mean use use spmv0
         grid.x = ( (n_global + block.x -1) /block.x );
+        printf("using spmv0: %f, %f, blockSize: %d\n", meanNnzPerRow, sd,block.x) ;        
     } else {
     	// these mean use use spmv1
         grid.x = n_global;
         if (meanNnzPerRow >= 2*basicSize) block.x = 2*basicSize;
+        printf("using spmv1: %f, %f, blockSize: %d\n", meanNnzPerRow, sd,block.x) ;
     } // end if // 
 
     

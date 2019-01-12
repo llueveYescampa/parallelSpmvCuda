@@ -66,12 +66,28 @@ void spmv1(real *__restrict__ y,
     __syncthreads();
     
     // local reduction per block
+    if (blockDim.x == 64) {
+        if (threadIdx.x<32) temp[threadIdx.x] += temp[threadIdx.x+32];
+        __syncthreads();
+    } // end if //
+  
+    // unrolling warp 
+    if (threadIdx.x < 16) {
+        volatile real *temp1 = temp;
+        temp1[threadIdx.x] += temp1[threadIdx.x+16];
+        temp1[threadIdx.x] += temp1[threadIdx.x+ 8];
+        temp1[threadIdx.x] += temp1[threadIdx.x+ 4];
+        temp1[threadIdx.x] += temp1[threadIdx.x+ 2];
+        temp1[threadIdx.x] += temp1[threadIdx.x+ 1];
+    } // end if //
+/*
     for (int next = blockDim.x/2; next > 0; next >>= 1 ) {
         if (threadIdx.x < next) {
             temp[threadIdx.x] += temp[threadIdx.x+next];
         } // end if // 
         __syncthreads();
     } // end for //
+*/
 
     if (threadIdx.x == 0) {
         y[blockIdx.x] = temp[0];
