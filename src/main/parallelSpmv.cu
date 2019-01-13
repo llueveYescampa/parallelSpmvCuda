@@ -202,16 +202,19 @@ int main(int argc, char *argv[])
     if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
     	// these mean use use spmv0
         grid.x = ( (n_global + block.x -1) /block.x );
-        printf("using spmv0: %f, %f, blockSize: %d\n", meanNnzPerRow, sd,block.x) ;        
+        printf("using spmv0: %f, %f, blockSize: [%d, %d]\n", meanNnzPerRow, sd,block.x,block.y) ;
     } else {
-    	// these mean use use spmv1
-        grid.x = n_global;
-        if (meanNnzPerRow >= 2*basicSize) block.x = 2*basicSize;
-        printf("using spmv1: %f, %f, blockSize: %d\n", meanNnzPerRow, sd,block.x) ;
+        // these mean use use spmv1
+        if (meanNnzPerRow >= 2*basicSize) {
+            block.x = 2*basicSize;
+        } // end if //
+        block.y=128/block.x;
+        grid.x = ( (n_global + block.y - 1) / block.y ) ;
+    	printf("using spmv1: %f, %f, blockSize: [%d, %d]\n", meanNnzPerRow, sd,block.x,block.y ) ;
     } // end if // 
 
     
-    //printf("%d, %d\n", grid.x, block.x); exit(0);
+    //printf("%d, %d, %d \n", grid.x, block.x, block.y); exit(0);
 
     // Timing should begin here//
     struct timeval tp;                                   // timer
@@ -229,7 +232,7 @@ int main(int argc, char *argv[])
         if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
             spmv0<<<grid, block>>>(w_d, rows_d, cols_d, n_global);
         } else {
-            spmv1<<<grid, block, block.x*sizeof(real)>>>(w_d,  rows_d, cols_d, n_global);
+            spmv1<<<grid, block, block.x * block.y *sizeof(real)>>>(w_d,  rows_d, cols_d, n_global);
         } // end if // 
         cuda_ret = cudaUnbindTexture(xTex);
         cuda_ret = cudaUnbindTexture(valTex);

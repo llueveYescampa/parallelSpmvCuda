@@ -34,7 +34,7 @@ void spmv0(real *__restrict__ y,
            const int nRows
           )
 {    
-    const unsigned int row = blockIdx.x*blockDim.x + threadIdx.x;
+    const int row = blockIdx.x*blockDim.x + threadIdx.x;
     
     if (row < nRows)  {
         real dot = (real) 0;
@@ -46,6 +46,7 @@ void spmv0(real *__restrict__ y,
     } // end if //
 } // end of spmv0() //
 
+
 __global__ 
 void spmv1(real *__restrict__ y, 
            //real *__restrict__ x, 
@@ -55,41 +56,36 @@ void spmv1(real *__restrict__ y,
            int nRows)
 {    
     extern __shared__ real temp[];
-    temp[threadIdx.x] = (real) 0;
-
-    const int row = blockIdx.x;
     
-    for (int col=row_ptr[row]+threadIdx.x; col < row_ptr[row+1]; col+=blockDim.x) {
-        //temp[threadIdx.x] += (val[col] * x[col_idx[col]]);
-        temp[threadIdx.x] += (fetch_real(valTex,col) * fetch_real( xTex, col_idx[col]));
-    } // end for //
-    __syncthreads();
+    const int row = blockIdx.x*blockDim.y + threadIdx.y;
+    const int sharedMemIndx = blockDim.x*threadIdx.y + threadIdx.x;
     
-    // local reduction per block
-    if (blockDim.x == 64) {
-        if (threadIdx.x<32) temp[threadIdx.x] += temp[threadIdx.x+32];
-        __syncthreads();
-    } // end if //
-  
-    // unrolling warp 
-    if (threadIdx.x < 16) {
-        volatile real *temp1 = temp;
-        temp1[threadIdx.x] += temp1[threadIdx.x+16];
-        temp1[threadIdx.x] += temp1[threadIdx.x+ 8];
-        temp1[threadIdx.x] += temp1[threadIdx.x+ 4];
-        temp1[threadIdx.x] += temp1[threadIdx.x+ 2];
-        temp1[threadIdx.x] += temp1[threadIdx.x+ 1];
-    } // end if //
-/*
-    for (int next = blockDim.x/2; next > 0; next >>= 1 ) {
-        if (threadIdx.x < next) {
-            temp[threadIdx.x] += temp[threadIdx.x+next];
-        } // end if // 
-        __syncthreads();
-    } // end for //
-*/
+    temp[sharedMemIndx] = (real) 0;
 
-    if (threadIdx.x == 0) {
-        y[blockIdx.x] = temp[0];
-    } // end if //   
+    if (row < nRows) {
+        for (int col=row_ptr[row]+threadIdx.x; col < row_ptr[row+1]; col+=blockDim.x) {
+            //temp[threadIdx.x] += (val[col] * x[col_idx[col]]);
+            temp[ sharedMemIndx] += (fetch_real(valTex,col) * fetch_real( xTex, col_idx[col]));
+        } // end for //
+        __syncthreads();
+
+        // unrolling warp 
+        if (blockDim.x == 64) {
+            if (threadIdx.x<32) temp[sharedMemIndx] += temp[sharedMemIndx + 32];
+            __syncthreads();
+        } // end if //
+      
+        if (threadIdx.x < 16) {
+            volatile real *temp1 = temp;
+            temp1[sharedMemIndx] += temp1[sharedMemIndx + 16];
+            temp1[sharedMemIndx] += temp1[sharedMemIndx +  8];
+            temp1[sharedMemIndx] += temp1[sharedMemIndx +  4];
+            temp1[sharedMemIndx] += temp1[sharedMemIndx +  2];
+            temp1[sharedMemIndx] += temp1[sharedMemIndx +  1];
+        } // end if //
+
+        if ((sharedMemIndx % blockDim.x)  == 0) {
+            y[row] = temp[sharedMemIndx];
+        } // end if //   
+    } // end if
 } // end of spmv1() //
