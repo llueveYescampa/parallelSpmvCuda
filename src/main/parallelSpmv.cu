@@ -23,7 +23,7 @@
     texture<float> valTex;
 #endif
 
-__global__ void spmv0(real *__restrict__ y, 
+__global__ void spmv(real *__restrict__ y, 
                       //real *__restrict__ x, 
                       //real *__restrict__ val,  
                       int  *__restrict__ row_ptr, 
@@ -31,15 +31,6 @@ __global__ void spmv0(real *__restrict__ y,
                       const int nRows
                       );
                      
-__global__ void spmv1(real *__restrict__ y, 
-                      //real *__restrict__ x, 
-                      //real *__restrict__ val,  
-                      int  *__restrict__ row_ptr, 
-                      int  *__restrict__ col_idx, 
-                      const int nRows
-                     );
-
-
 real calculateSD(real *data, int n)
 {
     real sum = (real) 0.0; 
@@ -193,16 +184,17 @@ int main(int argc, char *argv[])
     if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix x_d");
 
     real meanNnzPerRow = ((real) nnz_global) / (n_global);
-    
+
     const int basicSize = 32;
     dim3 block(basicSize);
     dim3 grid;
     const real parameter2Adjust = 0.5;
+    size_t sharedMemorySize=0;
 
     if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
     	// these mean use use spmv0
         grid.x = ( (n_global + block.x -1) /block.x );
-        printf("using spmv0: %f, %f, blockSize: [%d, %d]\n", meanNnzPerRow, sd,block.x,block.y) ;
+        printf("using scalar spmv, blockSize: [%d, %d] %f, %f\n",block.x,block.y, meanNnzPerRow, sd) ;
     } else {
         // these mean use use spmv1
         if (meanNnzPerRow >= 2*basicSize) {
@@ -210,9 +202,9 @@ int main(int argc, char *argv[])
         } // end if //
         block.y=128/block.x;
         grid.x = ( (n_global + block.y - 1) / block.y ) ;
-    	printf("using spmv1: %f, %f, blockSize: [%d, %d]\n", meanNnzPerRow, sd,block.x,block.y ) ;
+        printf("using vector spmv, blockSize: [%d, %d] %f, %f\n",block.x,block.y, meanNnzPerRow, sd) ;
+    	sharedMemorySize=block.x*block.y*sizeof(real);
     } // end if // 
-
     
     //printf("%d, %d, %d \n", grid.x, block.x, block.y); exit(0);
 
@@ -229,11 +221,7 @@ int main(int argc, char *argv[])
 
         cuda_ret = cudaBindTexture(NULL, xTex, v_d, n_global*sizeof(real));
         cuda_ret = cudaBindTexture(NULL, valTex, vals_d, nnz_global*sizeof(real));
-        if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
-            spmv0<<<grid, block>>>(w_d, rows_d, cols_d, n_global);
-        } else {
-            spmv1<<<grid, block, block.x * block.y *sizeof(real)>>>(w_d,  rows_d, cols_d, n_global);
-        } // end if // 
+        spmv<<<grid, block, sharedMemorySize>>>(w_d,  rows_d, cols_d, n_global);
         cuda_ret = cudaUnbindTexture(xTex);
         cuda_ret = cudaUnbindTexture(valTex);
 
