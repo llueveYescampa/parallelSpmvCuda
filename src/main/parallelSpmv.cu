@@ -23,13 +23,6 @@
     texture<float> valTex;
 #endif
 
-__global__ void spmv(real *__restrict__ y, 
-                      //real *__restrict__ x, 
-                      //real *__restrict__ val,  
-                      int  *__restrict__ row_ptr, 
-                      int  *__restrict__ col_idx, 
-                      const int nRows
-                      );
                      
 real calculateSD(real *data, int n)
 {
