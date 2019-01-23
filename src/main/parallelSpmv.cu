@@ -111,8 +111,17 @@ int main(int argc, char *argv[])
     real *v=NULL; // <-- input vector to be shared later
     //real *v_off=NULL; // <-- input vector to be shared later
     
-    w     = (real *) malloc((n)*sizeof(real)); 
-    v     = (real *) malloc((n)*sizeof(real));
+    
+#ifdef USE_PIN_MEMORY
+    //cudaMallocHost((real **)&v, n*sizeof(real));
+    //cudaMallocHost((real **)&w, n*sizeof(real));
+    cudaHostAlloc((real **)&v, n*sizeof(real),cudaHostAllocDefault);
+    cudaHostAlloc((real **)&w, n*sizeof(real),cudaHostAllocDefault);
+
+#else
+    v     = (real *) malloc(n*sizeof(real));
+    w     = (real *) malloc(n*sizeof(real)); 
+#endif    
     //v_off = (real *) malloc((nColsOff)*sizeof(real));
 
     // reading input vector
@@ -249,8 +258,14 @@ int main(int argc, char *argv[])
         free(sol);    
     } // end if //
 
+
+#ifdef USE_PIN_MEMORY
+    cudaFreeHost(w);
+    cudaFreeHost(v);
+#else
     free(w);
     free(v);
+#endif
     
     #include "parallelSpmvCleanData.h" 
     //MPI_Finalize();

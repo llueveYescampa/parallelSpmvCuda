@@ -1,1 +1,1 @@
-//#define USE_PIN_MEMORY
+#define USE_PIN_MEMORY
