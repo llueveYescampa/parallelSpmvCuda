@@ -136,15 +136,9 @@ void reader( int *n_global,
     // end of determining on_proc_nnz and of_proc_nnz  for this process
     
     // allocating for on-proc solution //
-#ifdef USE_PIN_MEMORY
-    cudaHostAlloc((void**)rowPtr, (*n+1)*sizeof(int),  cudaHostAllocDefault);
-    cudaHostAlloc((void**)colIdx, (on_proc_nnz)*sizeof(int),  cudaHostAllocDefault);
-    cudaHostAlloc((void**)val, (on_proc_nnz)*sizeof(real), cudaHostAllocDefault);
-#else
     (*rowPtr) = (int *)  malloc( (*n+1)         * sizeof(int));
     (*colIdx) = (int *)  malloc( (on_proc_nnz) * sizeof(int)); 
     (*val)    = (real *) malloc( (on_proc_nnz) * sizeof(real)); 
-#endif
 
     (*rowPtr)[0] = 0;
     
