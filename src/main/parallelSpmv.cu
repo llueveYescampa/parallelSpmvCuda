@@ -164,15 +164,9 @@ int main(int argc, char *argv[])
     cuda_ret = cudaMemcpy(vals_d, val, (nnz_global)*sizeof(real),cudaMemcpyHostToDevice);
     if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix vals_d");
 
-#ifdef USE_PIN_MEMORY
-    cudaFreeHost(row_ptr);
-    cudaFreeHost(col_idx);
-    cudaFreeHost(val);
-#else
     free(row_ptr);
     free(col_idx);
     free(val);
-#endif
 
     real meanNnzPerRow = ((real) nnz_global) / (n_global);
 
