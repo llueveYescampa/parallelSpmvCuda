@@ -106,6 +106,11 @@ int main(int argc, char *argv[])
            argv[1], root);
     
     // ready to start //    
+    cudaError_t cuda_ret;
+
+    //cuda_ret = cudaStreamCreateWithFlags(&stream, cudaStreamDefault) ;
+    cuda_ret = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking );
+    if(cuda_ret != cudaSuccess) FATAL("Unable to create streams ");
 
     real *w=NULL;
     real *v=NULL; // <-- input vector to be shared later
@@ -142,7 +147,6 @@ int main(int argc, char *argv[])
     int *rows_d, *cols_d;
     real *vals_d;
     real *v_d, *w_d;
-    cudaError_t cuda_ret;
 
     // Allocating device memory for input matrices 
 
@@ -211,20 +215,22 @@ int main(int argc, char *argv[])
     
     for (int t=0; t<REP; ++t) {
 
-        cuda_ret = cudaMemcpy(v_d, v, (n_global)*sizeof(real),cudaMemcpyHostToDevice);
-        if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix x_d");
-        
         cuda_ret = cudaMemset(w_d, 0, (size_t) n_global*sizeof(real));
         if(cuda_ret != cudaSuccess) FATAL("Unable to set device for matrix w_d");
 
+        cuda_ret = cudaMemcpyAsync(v_d, v, (n_global)*sizeof(real),cudaMemcpyHostToDevice, stream);
+        if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix x_d");
+
         cuda_ret = cudaBindTexture(NULL, xTex, v_d, n_global*sizeof(real));
         cuda_ret = cudaBindTexture(NULL, valTex, vals_d, nnz_global*sizeof(real));
-        spmv<<<grid, block, sharedMemorySize>>>(w_d,  rows_d, cols_d, n_global);
+        spmv<<<grid, block, sharedMemorySize, stream>>>(w_d,  rows_d, cols_d, n_global);
         cuda_ret = cudaUnbindTexture(xTex);
         cuda_ret = cudaUnbindTexture(valTex);
 
+        cudaStreamSynchronize(stream);
         cuda_ret = cudaMemcpy(w, w_d, (n_global)*sizeof(real),cudaMemcpyDeviceToHost);
         if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix y_d back to host");
+
     } // end for //
     
     gettimeofday(&tp,NULL);
