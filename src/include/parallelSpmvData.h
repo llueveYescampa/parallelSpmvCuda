@@ -13,6 +13,4 @@
     int *col_idx_off=NULL;
     real *val_off=NULL;
     // end of data for the off_proc solution
-    
-    cudaStream_t stream;
 

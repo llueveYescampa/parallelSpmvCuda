@@ -3,7 +3,6 @@
 #include <math.h>
 #include <sys/time.h>
 #include "real.h"
-#include "dataDef.h"
 
 #include "parallelSpmv.h"
 
@@ -108,25 +107,14 @@ int main(int argc, char *argv[])
     // ready to start //    
     cudaError_t cuda_ret;
 
-    //cuda_ret = cudaStreamCreateWithFlags(&stream, cudaStreamDefault) ;
-    cuda_ret = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking );
-    if(cuda_ret != cudaSuccess) FATAL("Unable to create streams ");
 
     real *w=NULL;
     real *v=NULL; // <-- input vector to be shared later
     //real *v_off=NULL; // <-- input vector to be shared later
     
     
-#ifdef USE_PIN_MEMORY
-    //cudaMallocHost((real **)&v, n*sizeof(real));
-    //cudaMallocHost((real **)&w, n*sizeof(real));
-    cudaHostAlloc((real **)&v, n*sizeof(real),cudaHostAllocDefault);
-    cudaHostAlloc((real **)&w, n*sizeof(real),cudaHostAllocDefault);
-
-#else
     v     = (real *) malloc(n*sizeof(real));
     w     = (real *) malloc(n*sizeof(real)); 
-#endif    
     //v_off = (real *) malloc((nColsOff)*sizeof(real));
 
     // reading input vector
@@ -177,6 +165,10 @@ int main(int argc, char *argv[])
     cuda_ret = cudaMemcpy(vals_d, val, (nnz_global)*sizeof(real),cudaMemcpyHostToDevice);
     if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix vals_d");
 
+
+    cuda_ret = cudaMemcpy(v_d, v, (n_global)*sizeof(real),cudaMemcpyHostToDevice);
+    if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix x_d");
+
     free(row_ptr);
     free(col_idx);
     free(val);
@@ -218,24 +210,22 @@ int main(int argc, char *argv[])
         cuda_ret = cudaMemset(w_d, 0, (size_t) n_global*sizeof(real));
         if(cuda_ret != cudaSuccess) FATAL("Unable to set device for matrix w_d");
 
-        cuda_ret = cudaMemcpyAsync(v_d, v, (n_global)*sizeof(real),cudaMemcpyHostToDevice, stream);
-        if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix x_d");
-
         cuda_ret = cudaBindTexture(NULL, xTex, v_d, n_global*sizeof(real));
         cuda_ret = cudaBindTexture(NULL, valTex, vals_d, nnz_global*sizeof(real));
-        spmv<<<grid, block, sharedMemorySize, stream>>>(w_d,  rows_d, cols_d, n_global);
+        spmv<<<grid, block, sharedMemorySize>>>(w_d,  rows_d, cols_d, n_global);
         cuda_ret = cudaUnbindTexture(xTex);
         cuda_ret = cudaUnbindTexture(valTex);
-
-        cudaStreamSynchronize(stream);
-        cuda_ret = cudaMemcpy(w, w_d, (n_global)*sizeof(real),cudaMemcpyDeviceToHost);
-        if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix y_d back to host");
-
+        //cudaDeviceSynchronize();
+        cudaStreamSynchronize(NULL);
+        
     } // end for //
     
     gettimeofday(&tp,NULL);
     elapsed_time += (tp.tv_sec*1.0e6 + tp.tv_usec);
-    printf ("Total time was %f seconds.\n", elapsed_time*1.0e-6);
+    printf ("Total time was %f seconds, GFLOPS: %f\n", elapsed_time*1.0e-6, 2.0*nnz_global*REP*1.0e-3/elapsed_time);
+
+    cuda_ret = cudaMemcpy(w, w_d, (n_global)*sizeof(real),cudaMemcpyDeviceToHost);
+    if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to device matrix y_d back to host");
 
 // cuda stuff ends here
 //////////////////////////////////////
@@ -264,14 +254,8 @@ int main(int argc, char *argv[])
         free(sol);    
     } // end if //
 
-
-#ifdef USE_PIN_MEMORY
-    cudaFreeHost(w);
-    cudaFreeHost(v);
-#else
     free(w);
     free(v);
-#endif
     
     #include "parallelSpmvCleanData.h" 
     //MPI_Finalize();
