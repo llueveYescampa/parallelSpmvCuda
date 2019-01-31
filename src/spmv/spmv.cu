@@ -36,22 +36,18 @@ void spmv(real *__restrict__ y,
     if (blockDim.y==1) { 
         const int row = blockIdx.x*blockDim.x + threadIdx.x;
         if (row < nRows)  {
-            real dot = y[row];
+            real dot = (real) 0.0;
             for ( int col = row_ptr[row]; col < row_ptr[row+1]; ++col ) {
                 //dot += (val[col] * x[col_idx[col]]);
                 dot += (fetch_real(valTex,col) * fetch_real( xTex, col_idx[col])); 
             } // end for //
-            y[row] = dot;
+            y[row] += dot;
         } // end if //
     } else {    
         extern __shared__ real temp[];
         const unsigned int row = blockIdx.x*blockDim.y + threadIdx.y;
         const unsigned int sharedMemIndx = blockDim.x*threadIdx.y + threadIdx.x;
-        if ((sharedMemIndx % blockDim.x)  == 0) {
-            temp[sharedMemIndx] = y[row];
-        } else {
-            temp[sharedMemIndx] = (real) 0.0;
-        } // end if //   
+        temp[sharedMemIndx] = (real) 0.0;
         
         if (row < nRows) {
             for (unsigned int col=row_ptr[row]+threadIdx.x; col < row_ptr[row+1]; col+=blockDim.x) {
@@ -76,7 +72,7 @@ void spmv(real *__restrict__ y,
             } // end if //
 
             if ((sharedMemIndx % blockDim.x)  == 0) {
-                y[row] = temp[sharedMemIndx];
+                y[row] += temp[sharedMemIndx];
             } // end if //   
         } // end if
     } // end if //
