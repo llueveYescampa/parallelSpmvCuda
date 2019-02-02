@@ -54,13 +54,7 @@ void spmv(real *__restrict__ y,
                 //temp[threadIdx.x] += (val[col] * x[col_idx[col]]);
                 temp[ sharedMemIndx] += (fetch_real(valTex,col) * fetch_real( xTex, col_idx[col]));
             } // end for //
-            __syncthreads();
-
-            if (blockDim.x == 64) {
-                if (threadIdx.x<32) temp[sharedMemIndx] += temp[sharedMemIndx + 32];
-                __syncthreads();
-            } // end if //
-          
+            
             // unrolling warp 
             if (threadIdx.x < 16) {
                 volatile real *temp1 = temp;
