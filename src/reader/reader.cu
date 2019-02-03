@@ -169,20 +169,20 @@ void reader( int *n_global,
         int nnzPR = rows_Ptr[i] - rows_Ptr[i-1];
         int rowCounterOn=0;
         int rowCounterOff=0;
-        real temp;
+        double temp;
         for (int j=0; j<nnzPR; ++j, ++k ) {
-            if ( !fread(&temp, sizeof(real), (size_t) (1), filePtr)) exit(0);
+            if ( !fread(&temp, sizeof(double), (size_t) (1), filePtr)) exit(0);
             if (cols_Ptr[k] >=  fColumn  &&  cols_Ptr[k] <=  lColumn  ) {
                 // on process data goes here
                 ++rowCounterOn;
                 (*colIdx)[on] = cols_Ptr[k] - fColumn;
-                (*val)[on] = temp;
+                (*val)[on] = (real) temp;
                 ++on;
             } else {
                 // off process data goes here
                 ++rowCounterOff;
                 (*colIdxO)[off] = cols_Ptr[k];
-                (*valO)[off] = temp;
+                (*valO)[off] = (real) temp;
                 ++off;
             } // end if 
         } // end for //
