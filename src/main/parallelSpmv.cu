@@ -178,17 +178,24 @@ int main(int argc, char *argv[])
     real meanNnzPerRow = ((real) nnz_global) / (n_global);
 
     const int basicSize = 32;
-    dim3 block(basicSize);
-    dim3 grid;
-    const real parameter2Adjust = 0.5;
+    dim3 block, grid;
+    const real parameter2Adjust = 0.05;
     size_t sharedMemorySize=0;
 
     if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
+        if (meanNnzPerRow < 4) {
+            block.x=128;
+        } else if (meanNnzPerRow < 16) {
+            block.x=64;
+        } else {
+            block.x=32;
+        } // end if //
     	// these mean use scalar spmv
         grid.x = ( (n_global + block.x -1) /block.x );
         printf("using scalar spmv, blockSize: [%d, %d] %f, %f\n",block.x,block.y, meanNnzPerRow, sd) ;
     } else {
         // these mean use vector spmv
+        block.x=basicSize;
         block.y=128/block.x;
         grid.x = ( (n_global + block.y - 1) / block.y ) ;
         printf("using vector spmv, blockSize: [%d, %d] %f, %f\n",block.x,block.y, meanNnzPerRow, sd) ;
