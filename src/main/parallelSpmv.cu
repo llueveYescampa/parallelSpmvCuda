@@ -97,6 +97,8 @@ int main(int argc, char *argv[])
     } // end if //
     //MPI_Bcast(&checkSol,1,MPI_CHAR,root,MPI_COMM_WORLD);
 
+    printf("%s Precision.\n", (sizeof(real) == sizeof(double)) ? "Double": "Single");
+
     
     reader(&n_global,&nnz_global, &n, 
            &off_proc_nnz,
@@ -236,7 +238,7 @@ int main(int argc, char *argv[])
         int row=0;
         real tolerance = 1.0e-08;
         if (sizeof(real) != sizeof(double) ) {
-            tolerance = 1.0e-03;
+            tolerance = 1.0e-02;
         } // end if //
         
         real error;
