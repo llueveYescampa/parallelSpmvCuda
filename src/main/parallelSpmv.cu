@@ -179,13 +179,13 @@ int main(int argc, char *argv[])
 
     const int basicSize = 32;
     dim3 block, grid;
-    const real parameter2Adjust = 0.05;
+    const real parameter2Adjust = 0.075;
     size_t sharedMemorySize=0;
 
     if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
-        if (meanNnzPerRow < 4) {
+        if (meanNnzPerRow < (real) 4.0) {
             block.x=128;
-        } else if (meanNnzPerRow < 16) {
+        } else if (meanNnzPerRow < (real) 14.5) {
             block.x=64;
         } else {
             block.x=32;
