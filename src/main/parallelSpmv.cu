@@ -195,7 +195,11 @@ int main(int argc, char *argv[])
         printf("using scalar spmv, blockSize: [%d, %d] %f, %f\n",block.x,block.y, meanNnzPerRow, sd) ;
     } else {
         // these mean use vector spmv
-        block.x=basicSize;
+        if (meanNnzPerRow > 8.0*basicSize) {
+            block.x=2*basicSize;
+        }  else {
+            block.x=basicSize;
+        } // end if //
         block.y=128/block.x;
         grid.x = ( (n_global + block.y - 1) / block.y ) ;
         printf("using vector spmv, blockSize: [%d, %d] %f, %f\n",block.x,block.y, meanNnzPerRow, sd) ;

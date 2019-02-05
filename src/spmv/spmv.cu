@@ -33,6 +33,8 @@ void spmv(real *__restrict__ y,
            const int nRows
           )
 {   
+    extern __shared__ real temp[];
+
     if (blockDim.y==1) { 
         const int row = blockIdx.x*blockDim.x + threadIdx.x;
         if (row < nRows)  {
@@ -43,8 +45,10 @@ void spmv(real *__restrict__ y,
             } // end for //
             y[row] += dot;
         } // end if //
-    } else {    
-        extern __shared__ real temp[];
+        return;
+    } // end if //
+    
+    if (blockDim.x==32) { 
         const unsigned int row = blockIdx.x*blockDim.y + threadIdx.y;
         const unsigned int sharedMemIndx = blockDim.x*threadIdx.y + threadIdx.x;
         temp[sharedMemIndx] = (real) 0.0;
@@ -69,6 +73,40 @@ void spmv(real *__restrict__ y,
                 y[row] += temp[sharedMemIndx];
             } // end if //   
         } // end if
+        return;
     } // end if //
-    
+
+    if (blockDim.x==64) { 
+        const unsigned int row = blockIdx.x*blockDim.y + threadIdx.y;
+        const unsigned int sharedMemIndx = blockDim.x*threadIdx.y + threadIdx.x;
+        temp[sharedMemIndx] = (real) 0.0;
+        
+        if (row < nRows) {
+            for (unsigned int col=row_ptr[row]+threadIdx.x; col < row_ptr[row+1]; col+=blockDim.x) {
+                //temp[threadIdx.x] += (val[col] * x[col_idx[col]]);
+                temp[ sharedMemIndx] += (fetch_real(valTex,col) * fetch_real( xTex, col_idx[col]));
+            } // end for //
+           __syncthreads();
+           
+            if (blockDim.x == 64) {
+                if (threadIdx.x<32) temp[sharedMemIndx] += temp[sharedMemIndx + 32];
+                __syncthreads();
+            } // end if //
+            
+            // unrolling warp 
+            if (threadIdx.x < 16) {
+                volatile real *temp1 = temp;
+                temp1[sharedMemIndx] += temp1[sharedMemIndx + 16];
+                temp1[sharedMemIndx] += temp1[sharedMemIndx + 8];
+                temp1[sharedMemIndx] += temp1[sharedMemIndx + 4];
+                temp1[sharedMemIndx] += temp1[sharedMemIndx + 2];
+                temp1[sharedMemIndx] += temp1[sharedMemIndx + 1];
+            } // end if //
+
+            if ((sharedMemIndx % blockDim.x)  == 0) {
+                y[row] += temp[sharedMemIndx];
+            } // end if //   
+        } // end if
+        return;
+    } // end if //
 } // end of spmv() //
