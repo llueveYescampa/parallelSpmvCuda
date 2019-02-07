@@ -183,9 +183,9 @@ int main(int argc, char *argv[])
     size_t sharedMemorySize=0;
 
     if (meanNnzPerRow + parameter2Adjust*sd < basicSize) {
-        if (meanNnzPerRow < (real) 4.0) {
+        if (meanNnzPerRow < (real) 4.5) {
             block.x=128;
-        } else if (meanNnzPerRow < (real) 14.5) {
+        } else if (meanNnzPerRow < (real) 14.4) {
             block.x=64;
         } else {
             block.x=32;
@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
         printf("using scalar spmv, blockSize: [%d, %d] %f, %f\n",block.x,block.y, meanNnzPerRow, sd) ;
     } else {
         // these mean use vector spmv
-        if (meanNnzPerRow > 8.0*basicSize) {
+        if (meanNnzPerRow > 10.0*basicSize) {
             block.x=2*basicSize;
         }  else {
             block.x=basicSize;
