@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 
     const int warpSize = 32;
     dim3 block, grid;
-    const real parameter2Adjust = 0.1;
+    const real parameter2Adjust = 0.15;
     size_t sharedMemorySize=0;
 
     if (meanNnzPerRow < warpSize && parameter2Adjust*sd < warpSize) {
