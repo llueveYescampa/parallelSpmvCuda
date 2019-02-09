@@ -7,6 +7,10 @@
     int *col_idx=NULL;
     real *val=NULL;
     // end of data for the on_proc solution
+
+    int *rows_d, *cols_d;
+    real *vals_d;
+    real *v_d, *w_d;
     
     // data for the off_proc solution
     int *row_ptr_off=NULL;

@@ -134,9 +134,6 @@ int main(int argc, char *argv[])
     free(temp);
     /////////////////////////////////////////////////////
 
-    int *rows_d, *cols_d;
-    real *vals_d;
-    real *v_d, *w_d;
 
     // Allocating device memory for input matrices 
 
@@ -268,8 +265,6 @@ int main(int argc, char *argv[])
         free(sol);    
     } // end if //
 
-    free(w);
-    free(v);
     
     #include "parallelSpmvCleanData.h" 
     //MPI_Finalize();
