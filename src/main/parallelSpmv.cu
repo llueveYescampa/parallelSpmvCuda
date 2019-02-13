@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
     const real parameter2Adjust = 0.15;
     size_t sharedMemorySize=0;
 
-    if (meanNnzPerRow < warpSize && parameter2Adjust*sd < warpSize) {
+    if (meanNnzPerRow < 10 && parameter2Adjust*sd < warpSize) {
         if (meanNnzPerRow < (real) 4.5) {
             block.x=128;
         } else if (meanNnzPerRow < (real) 14.4) {
@@ -194,8 +194,10 @@ int main(int argc, char *argv[])
         // these mean use vector spmv
         if (meanNnzPerRow > 10.0*warpSize) {
             block.x=2*warpSize;
+        }  else if (meanNnzPerRow > 4.0*warpSize) {
+            block.x=warpSize/2;
         }  else {
-            block.x=warpSize;
+            block.x=warpSize/4;
         } // end if //
         block.y=128/block.x;
         grid.x = ( (n_global + block.y - 1) / block.y ) ;
