@@ -4,13 +4,13 @@ void getRowsNnzPerProc(int *rowsPP, int *nnzPP, const int *global_n, const int *
 {
     int worldSize=1;
 
-    float nnzIncre = (float ) *global_nnz/ (float) worldSize;
-    float lookingFor=nnzIncre;
+    double nnzIncre = (double) *global_nnz/ (double) worldSize;
+    double lookingFor=nnzIncre;
     int startRow=0, endRow;
     int partition=0;
 
     for (int row=0; row<*global_n; ++row) {    
-        if ( (float) row_Ptr[row+1] >=  lookingFor ) { 
+        if ( (double) row_Ptr[row+1] >=  lookingFor ) { 
             // search for smallest difference
             if (fabs ( lookingFor - row_Ptr[row+1])  <= fabs ( lookingFor - row_Ptr[row])   ) {
                 endRow = row;
